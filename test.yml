@@ -1,0 +1,10 @@
+- hosts: "NameNode"
+  tasks:
+
+  - file: 
+      state: directory
+      path: "/root/av"
+    register: x
+
+  - debug:
+      var: x.changed 

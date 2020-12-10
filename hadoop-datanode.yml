@@ -1,0 +1,62 @@
+- hosts: DataNode
+  vars_files: 
+  - datanode_vars.yml
+  tasks:
+  - name: "copying hadoop to host"
+    copy:
+       src: "/root/hadoop-1.2.1-1.x86_64.rpm"
+       dest: "/root/"
+
+  - name: "copying jdk to host "
+    copy:
+       src: "/root/jdk-8u171-linux-x64.rpm"
+       dest: "/root/"     
+  
+  - name: "Installing jdk from local file"
+    yum:
+      name: "/root/jdk-8u171-linux-x64.rpm "
+      state: present
+      disable_gpg_check: yes
+
+  - name: "Check hadoop Is already installed at host"
+    tags: hadoop
+    shell: " rpm -q hadoop | grep hadoop-1.2.1-1.x86_64 | grep -v grep"
+    ignore_errors: yes
+    changed_when: false
+    register: hadoop_install_status
+
+  - name: "Installing hadoop  from local file"
+    tags: hadoop
+    shell: "rpm -i hadoop-1.2.1-1.x86_64.rpm --force"
+    when: hadoop_install_status.rc == 1
+
+  - name: "uploading the core-site.xml"
+    template:
+          src: "data-core-site.yml"
+          dest: "/etc/hadoop/core-site.xml"
+
+  - name: "uploading the hdfs-site.xml"
+    template:
+          src: "hdfs-site.yml"
+          dest: "/etc/hadoop/hdfs-site.xml"
+    
+
+  - name: "Creating the directory in / folder"
+    file:
+       state: directory
+       path: "/{{ folder }}"
+
+  - name: "Check DataNode Is already running"
+    tags: namenode
+    shell: "jps | grep DataNode | grep -v grep"
+    ignore_errors: yes
+#    changed_when: false
+    register: service_namenode_status
+
+  - name: "Skipped this if namenode is already running"
+    tags: namenode
+    command: hadoop-daemon.sh start datanode
+    when: service_namenode_status.rc == 1
+
+  
+

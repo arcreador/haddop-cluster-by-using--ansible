@@ -1,0 +1,78 @@
+- hosts: NameNode
+  vars_files: 
+  - namenode_vars.yml
+  tasks:
+  - name: "copying hadoop to host"
+    copy:
+       src: "/root/hadoop-1.2.1-1.x86_64.rpm"
+       dest: "/root/"
+
+  - name: "copying jdk to host "
+    copy:
+       src: "/root/jdk-8u171-linux-x64.rpm"
+       dest: "/root/"
+       
+  - name: "Installing jdk from local file"
+    yum:
+      name: "/root/jdk-8u171-linux-x64.rpm "
+      state: "present"
+      disable_gpg_check: yes
+
+  - name: "Check hadoop Is already installed at host"
+    tags: hadoop
+    shell: " rpm -q hadoop | grep hadoop-1.2.1-1.x86_64 | grep -v grep"
+    ignore_errors: yes
+    changed_when: false
+    register: hadoop_install_status
+
+  - name: "Installing hadoop  from local file"
+    tags: hadoop
+    shell: "rpm -i hadoop-1.2.1-1.x86_64.rpm --force"
+    when: hadoop_install_status.rc == 1
+
+  - name: "uploading the core-site.xml"
+    template:
+          src: "name-core-site.yml"
+          dest: "/etc/hadoop/core-site.xml"
+
+  - name: "uploading the hdfs-site.xml"
+    template:
+          src: "hdfs-site.yml"
+          dest: "/etc/hadoop/hdfs-site.xml"
+    
+
+  - name: "Creating the directory in / folder"
+    file:
+       state: directory
+       path: "/{{ folder }}"
+    register: directory
+            
+  - name: "format hadoop folder"
+    shell: "echo Y | hadoop namenode -format"
+    ignore_errors: yes
+    when: directory.changed == true
+
+  - firewalld:
+        port: "{{ ports }}/tcp"
+        state: enabled
+        permanent: yes
+        immediate: yes  
+
+
+  - name: "Check hadoop NameNode Runinig or Not"
+    tags: namenode
+    shell: "jps | grep NameNode | grep -v grep"
+    ignore_errors: yes
+#    changed_when: false
+    register: service_namenode_status
+
+  - name: "Skipped this if namenode is already running"
+    tags: namenode
+    command: hadoop-daemon.sh start namenode
+    when: service_namenode_status.rc == 1
+
+
+
+
+
+

@@ -1,0 +1,5 @@
+node: "name"
+ports: 9001
+ip: "0.0.0.0"
+folder: "nn"
+
